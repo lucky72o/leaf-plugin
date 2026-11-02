@@ -12,7 +12,7 @@ file that matches and open it in Leaf. Nothing else: no review, no editing, no c
    If neither, say Leaf is not installed, give https://github.com/lucky72o/leaf, and stop.
 2. Run the resolver with the session's working directory and the user's words, each word
    as its own argument:
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/read/find-md.mjs --cwd "<working directory>" <words...>`
+   `node "${CLAUDE_PLUGIN_ROOT}/skills/read/find-md.mjs" --cwd "<working directory>" <words...>`
    It prints one JSON line. It tries the words as a literal path first (absolute, `~/`,
    `file:` URL, or anything with a slash; a bare file name that exists in the working
    directory also counts), then searches the project (the git repository containing the

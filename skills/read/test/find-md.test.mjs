@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { cleanWords, explicitPath, terms, tokens, roots, search, main } from '../find-md.mjs';
 
 const BROAD = 'working directory too broad for a search; give a path';
@@ -69,6 +69,29 @@ test('explicit non-markdown file', () => {
   const r = main(['--cwd', t.work, './notes.txt']);
   assert.equal(r.code, 64);
   assert.equal(r.out.error, 'not a markdown file');
+});
+
+test('bare non-markdown file name in cwd is refused, not searched', () => {
+  const t = tree();
+  file(path.join(t.work, 'notes.txt'));
+  file(path.join(t.work, 'docs', 'notes-txt.md'));
+  const r = main(['--cwd', t.work, 'notes.txt']);
+  assert.equal(r.code, 64);
+  assert.equal(r.out.error, 'not a markdown file');
+  // a bare name that does not exist goes on to the search
+  const g = main(['--cwd', t.work, 'notes']);
+  assert.equal(g.code, 0);
+  assert.deepEqual(paths(g.out), [path.join(t.work, 'docs', 'notes-txt.md')]);
+});
+
+test('unreadable files are skipped', () => {
+  const t = tree();
+  const env = { home: t.home, fsRoot: t.fsRoot };
+  const ok = file(path.join(t.work, 'a', 'plan.md'));
+  const locked = file(path.join(t.work, 'b', 'plan.md'));
+  fs.chmodSync(locked, 0o000);
+  try { assert.deepEqual(paths(find(t.work, ['plan'], env)), [ok]); }
+  finally { fs.chmodSync(locked, 0o644); }
 });
 
 test('bare file name in cwd', () => {
@@ -191,6 +214,9 @@ test('unicode tokens', () => {
   const env = { home: t.home, fsRoot: t.fsRoot };
   const f = file(path.join(t.work, 'план.md'));
   assert.deepEqual(paths(find(t.work, ['План'], env)), [f]);
+  // a decomposed file name matches a composed query
+  const g = file(path.join(t.work, 'cafe\u0301-notes.md'));
+  assert.deepEqual(paths(find(t.work, ['café', 'notes'], env)), [g]);
 });
 
 test('substring needs 3 chars', () => {
@@ -221,6 +247,11 @@ test('skips .leaf, node_modules, dot dirs except .claude, symlinks', () => {
   fs.symlinkSync(path.dirname(outside), path.join(t.work, 'linkdir'));
   fs.symlinkSync(outside, path.join(t.work, 'link-plan.md'));
   assert.deepEqual(paths(find(t.work, ['plan'], env)), [keep]);
+  // the same names as sibling roots are skipped too, and .claude is kept
+  const proj = repo(path.join(t.work, 'proj'));
+  for (const d of ['node_modules', 'build', 'dist', 'vendor', '.hidden']) file(path.join(t.work, d, 'sib.md'));
+  const dotClaude = file(path.join(t.work, '.claude', 'sib.md'));
+  assert.deepEqual(paths(find(proj, ['sib'], env)), [dotClaude]);
 });
 
 test('sibling folder without git', () => {
@@ -250,7 +281,7 @@ test('at most 10 matches', () => {
 test('main prints one JSON line and exit code', () => {
   const t = tree();
   const f = file(path.join(t.work, 'docs', 'daily-plan.md'));
-  const out = execFileSync(process.execPath, [path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'find-md.mjs'), '--cwd', t.work, 'daily', 'plan'], { encoding: 'utf8' });
+  const out = execFileSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'find-md.mjs'), '--cwd', t.work, 'daily', 'plan'], { encoding: 'utf8' });
   assert.equal(out.split('\n').filter(Boolean).length, 1);
   assert.deepEqual(JSON.parse(out).matches.map(m => m.path), [f]);
   assert.equal(main([]).code, 64);

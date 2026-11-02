@@ -31,7 +31,7 @@ Rules that never bend:
 1. Check Leaf is installed: `[ -d /Applications/Leaf.app ] || mdfind "kMDItemCFBundleIdentifier == 'com.slavhurmanau.leaf'" | grep -q .`.
    If neither, say Leaf is not installed, give https://github.com/lucky72o/leaf, and stop.
    Then resolve the path. Refuse anything that is not an existing `.md` or `.markdown` file.
-2. Run `node ${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs start <path> [id] --owner "<short label for this session>"`
+2. Run `node "${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs" start <path> [id] --owner "<short label for this session>"`
    and branch on `action`:
    - `refused` (exit 4): show the message with the id, round and owner, and stop.
    - `changed` (exit 8): a publish was interrupted and the file changed since. Handle it
@@ -42,12 +42,12 @@ Rules that never bend:
 3. Open the file in Leaf in the foreground: `open -a Leaf <path>`. The user asked for
    the review and expects the window.
 4. Run the wait as a background command so the session stays usable:
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs wait <path> <id> <round>`.
+   `node "${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs" wait <path> <id> <round>`.
    Tell the user in one line that the review is open in Leaf, round N.
    If `start` printed `unsubmitted` (comments from an earlier review of this file that
    were ended without Submit), list them one line each right after that line and ask
    whether to restore them. On yes run
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs restore <path> <id> <archive>`
+   `node "${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs" restore <path> <id> <archive>`
    with the `archive` path from the entry; the comments appear in Leaf as drafts of the
    current round with new ids. On no, leave the archive alone and say nothing more.
    - Exit 0 with `count` 0: say "no remarks, approved", run `done <path> <id>`, stop.
@@ -59,7 +59,7 @@ Rules that never bend:
    `cp <path> <dir>/.leaf/<name>.<id>.r<N>.revision.md`. Edit the staged copy. Write
    the replies file `<dir>/.leaf/<name>.<id>.r<N>.replies.json`:
    `{"reviewId": "<id>", "round": N, "replies": [{"commentId": "c1", "text": "one line"}, ...]}`.
-6. Run `node ${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs publish <path> <id> <N>` and branch on `result`:
+6. Run `node "${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs" publish <path> <id> <N>` and branch on `result`:
    - `published`: start `wait <path> <id> <N+1>` in the background, tell the user in one
      line that the revision is in Leaf (round N+1), then handle the wait as in step 4.
    - `changed` (exit 8): the file changed after they submitted. Tell them so and ask
@@ -78,7 +78,7 @@ Only run it after the user said yes.
 
 ## `/leaf:review done <path>`
 
-Run `node ${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs done <path>`. It archives the
+Run `node "${CLAUDE_PLUGIN_ROOT}/skills/review/leaf-review.mjs" done <path>`. It archives the
 comments as `.leaf/<name>.comments.<id>.json`, removes the review's working files and
 is harmless when nothing is active.
 

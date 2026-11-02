@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 
 const STOP = new Set(['the', 'a', 'an', 'from', 'in', 'of', 'my', 'project', 'file', 'md', 'markdown']);
 const SKIP_DIRS = new Set(['node_modules', '.git', '.build', 'build', 'dist', 'vendor', '.leaf']);
+/// Directory names the walk never enters, as roots or below: the skip list and dot names other than .claude.
+const skipDir = (name) => SKIP_DIRS.has(name) || (name.startsWith('.') && name !== '.claude');
 const MAX_DEPTH = 6;
 const MAX_RESULTS = 10;
 const BROAD = 'working directory too broad for a search; give a path';
@@ -51,7 +53,7 @@ function checkFile(p) {
 
 /// Lower-cased pieces of letters and digits.
 export function tokens(text) {
-  return text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  return text.normalize('NFC').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 }
 
 /// The user's words as search terms: tokenised, stop words dropped.
@@ -83,7 +85,7 @@ export function roots(cwd, { home = os.homedir(), fsRoot = '/' } = {}) {
   if (isRepo && parent !== rootReal && parent !== homeReal && path.dirname(parent) !== rootReal) {
     try {
       siblings = fs.readdirSync(parent, { withFileTypes: true })
-        .filter(d => d.isDirectory() && !d.isSymbolicLink() && path.join(parent, d.name) !== project && !d.name.startsWith('.'))
+        .filter(d => d.isDirectory() && !d.isSymbolicLink() && path.join(parent, d.name) !== project && !skipDir(d.name))
         .map(d => path.join(parent, d.name))
         .sort();
     } catch { siblings = []; }
@@ -99,9 +101,10 @@ function walk(dir, depth, out) {
     if (e.isSymbolicLink()) continue;
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name) || (e.name.startsWith('.') && e.name !== '.claude')) continue;
+      if (skipDir(e.name)) continue;
       walk(full, depth + 1, out);
     } else if (e.isFile() && isMarkdown(e.name)) {
+      try { fs.accessSync(full, fs.constants.R_OK); } catch { continue; }
       out.push(full);
     }
   }
@@ -155,10 +158,12 @@ export function main(argv, env = {}) {
     if (direct.error) return { out: { error: direct.error }, code: 64 };
     return { out: { matches: [found(direct.path)] }, code: 0 };
   }
-  // A bare file name that exists in cwd.
-  if (isMarkdown(cleaned)) {
-    const bare = checkFile(path.join(real, cleaned));
-    if (bare.path) return { out: { matches: [found(bare.path)] }, code: 0 };
+  // A bare name that exists in cwd is that file, markdown or not (not a search).
+  const bareTarget = path.join(real, cleaned);
+  if (fs.existsSync(bareTarget) && fs.statSync(bareTarget).isFile()) {
+    const bare = checkFile(bareTarget);
+    if (bare.error) return { out: { error: bare.error }, code: 64 };
+    return { out: { matches: [found(bare.path)] }, code: 0 };
   }
   const termList = terms(words);
   if (termList.length === 0) return { out: { error: 'no search terms' }, code: 64 };
