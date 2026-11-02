@@ -1,0 +1,16 @@
+{
+  "name": "leaf-plugin",
+  "metadata": {
+    "description": "The leaf plugin for Claude Code: open and review markdown files in the Leaf Mac app."
+  },
+  "owner": {
+    "name": "Slav Gurmanov"
+  },
+  "plugins": [
+    {
+      "name": "leaf",
+      "source": "./",
+      "description": "Read and review markdown in the Leaf Mac app from Claude Code: /leaf:read opens the file you describe, /leaf:review runs a comment-and-revise loop."
+    }
+  ]
+}

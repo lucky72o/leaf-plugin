@@ -1,0 +1,8 @@
+{
+  "name": "leaf",
+  "description": "Read and review markdown in the Leaf Mac app from Claude Code: /leaf:read opens the file you describe, /leaf:review runs a comment-and-revise loop.",
+  "version": "0.1.0",
+  "author": { "name": "Slav Gurmanov" },
+  "license": "MIT",
+  "homepage": "https://github.com/lucky72o/leaf-plugin"
+}
