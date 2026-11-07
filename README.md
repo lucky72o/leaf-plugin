@@ -6,8 +6,10 @@ small native Mac reader, from inside a Claude Code session.
 **`/leaf:read <words>`** opens the file you describe in Leaf. Give it a path, a file name,
 or plain words such as `daily plan from the sleepeasy project`. Claude resolves the words
 to one existing `.md` or `.markdown` file in the current project or its sibling projects
-and opens it; when several files fit it lists them and asks, and when none fit it says so.
-It never opens a file you did not name or pick.
+and opens it. When several files fit, it takes the one under the current working directory
+or the one this session has been working on; otherwise it lists them and asks. When none
+fit it says so. It never guesses: a file is opened because you named it, picked it, or
+had the session working on it.
 
 **`/leaf:review <path>`** starts a review loop for a markdown file: the file opens in Leaf
 with a review bar, you comment on it there, Submit sends the comments back to the

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { cleanWords, explicitPath, terms, tokens, roots, search, main } from '../find-md.mjs';
+import { cleanWords, explicitPath, terms, tokens, roots, search, main, narrowToCwd } from '../find-md.mjs';
 
 const BROAD = 'working directory too broad for a search; give a path';
 
@@ -286,4 +286,30 @@ test('main prints one JSON line and exit code', () => {
   assert.deepEqual(JSON.parse(out).matches.map(m => m.path), [f]);
   assert.equal(main([]).code, 64);
   assert.equal(main(['--cwd', path.join(t.work, 'missing'), 'x']).code, 64);
+});
+
+test('several matches, one under a narrower working directory: that one, marked', () => {
+  const t = tree();
+  const r = repo(path.join(t.work, 'proj'));
+  const a = file(path.join(r, 'docs', 'ep1', 'hook.md'));
+  const b = file(path.join(r, 'docs', 'ep2', 'hook.md'));
+  const c = file(path.join(r, 'docs', 'ep3', 'hook.md'));
+  const env = { home: t.home, fsRoot: t.fsRoot };
+  // from the project root: all three, nothing narrowed
+  const all = main(['--cwd', r, 'hook'], env);
+  assert.deepEqual(paths(all.out).sort(), [a, b, c]);
+  assert.equal(all.out.narrowed, undefined);
+  // from ep3: only its hook, with the count of the others
+  const one = main(['--cwd', path.join(r, 'docs', 'ep3'), 'hook'], env);
+  assert.deepEqual(paths(one.out), [c]);
+  assert.equal(one.out.narrowed, 'working directory');
+  assert.equal(one.out.others, 2);
+  // from docs: all three are under it, so nothing is narrowed
+  const docs = main(['--cwd', path.join(r, 'docs'), 'hook'], env);
+  assert.equal(docs.out.matches.length, 3);
+  assert.equal(docs.out.narrowed, undefined);
+  // a single match is never marked; a sibling-named dir does not count as "under"
+  assert.deepEqual(narrowToCwd([{ path: c }], path.join(r, 'docs', 'ep3'), r), { matches: [{ path: c }] });
+  const sib = narrowToCwd([{ path: a }, { path: path.join(r, 'docs', 'ep3-old', 'hook.md') }], path.join(r, 'docs', 'ep3'), r);
+  assert.equal(sib.narrowed, undefined);
 });

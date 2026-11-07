@@ -3,6 +3,9 @@
 //   node find-md.mjs --cwd <dir> <words...>
 // Prints one JSON line: {"matches": [{path, score, mtime}, ...]} (best first, at most 10)
 // or {"error": "..."} with exit 64. Plain Node 20+, no dependencies.
+// When the search finds several files but exactly one of them is under the working
+// directory (and the working directory is narrower than the project), only that one is
+// returned, with "narrowed": "working directory" and "others": the count left out.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -169,7 +172,16 @@ export function main(argv, env = {}) {
   if (termList.length === 0) return { out: { error: 'no search terms' }, code: 64 };
   const r = roots(real, env);
   if (r.error) return { out: { error: r.error }, code: 64 };
-  return { out: { matches: search(r, termList) }, code: 0 };
+  return { out: narrowToCwd(search(r, termList), real, r.project), code: 0 };
+}
+
+/// Several matches with exactly one under a working directory narrower than the project
+/// become that one match; everything else is returned as it was.
+export function narrowToCwd(matches, cwd, project) {
+  if (matches.length < 2 || cwd === project) return { matches };
+  const under = matches.filter(m => m.path.startsWith(cwd + path.sep));
+  if (under.length !== 1) return { matches };
+  return { matches: under, narrowed: 'working directory', others: matches.length - 1 };
 }
 
 function found(p) {
