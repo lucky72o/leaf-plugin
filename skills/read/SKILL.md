@@ -17,13 +17,22 @@ file that matches and open it in Leaf. Nothing else: no review, no editing, no c
    `file:` URL, or anything with a slash; a bare file name that exists in the working
    directory also counts), then searches the project (the git repository containing the
    working directory) and its sibling projects for files whose path contains every word.
+   When several fit and exactly one is under the working directory, it returns that one
+   with `"narrowed": "working directory"` and `"others"`, the number left out.
 3. Act on the output:
    - `{"matches": [one entry]}`: run `open -a Leaf <path>` and say the path in one line.
-   - `{"matches": [two or more]}`: list up to 5 as a numbered list, each path shown
-     relative to the project's parent so the project name is visible, and ask which.
-     A number opens that entry with `open -a Leaf <path>`. More words rerun the resolver
-     with the new words appended to the original ones. Open nothing before the answer,
-     however far ahead the first entry is.
+     When the output has `narrowed`, add that N other files matched outside the working
+     directory, so the user can widen with more words if that was the wrong one.
+   - `{"matches": [two or more]}`: first check the conversation. If exactly one of the
+     matches is a file this session has already created, edited, opened, sent or been
+     told to work in (its folder named by the user or by the task in hand), open that one
+     with `open -a Leaf <path>` and say in one line which it is and that N others matched.
+     That is reading the context, not guessing: the file must appear in the session, not
+     merely rank first or look likely. Otherwise list up to 5 as a numbered list, each
+     path shown relative to the project's parent so the project name is visible, and ask
+     which. A number opens that entry with `open -a Leaf <path>`. More words rerun the
+     resolver with the new words appended to the original ones. Open nothing before the
+     answer, however far ahead the first entry is.
    - `{"matches": []}`: say in one line that nothing matched. If the words contained a
      `/` or ended in `.md`, add that no such file exists under the project or its
      siblings. Open nothing, create nothing.
@@ -31,8 +40,9 @@ file that matches and open it in Leaf. Nothing else: no review, no editing, no c
      means the session is running from the home directory or the filesystem root: ask
      for a path instead.
 
-Rules that never bend: never open a file the user did not name or pick when there was a
-choice; never create a file; never start a review; never widen the search beyond what
-the resolver returns (no searching the home directory or the disk yourself).
+Rules that never bend: never open a file the user did not name, pick, or work on in this
+session when there was a choice; never create a file; never start a review; never widen
+the search beyond what the resolver returns (no searching the home directory or the disk
+yourself).
 
 Reporting style: one line per event.
